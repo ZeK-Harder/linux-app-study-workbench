@@ -1,0 +1,6 @@
+# 换行符统一为 LF（WSL 里编译/解析；Windows 侧 VS Code 也认 LF）
+# 原因：C 程序用 fgets 逐行读，行尾 \r 会混进最后一个字段，导致"看起来格式对的行"解析失败。
+* text=auto eol=lf
+
+# 日志样本是数据，必须逐字节保留：-text 禁止 git 做任何换行符转换
+*.log -text
