@@ -5,6 +5,8 @@ hello
 a.out
 build/
 bin/
+# P1 构建产物（注意：不能写裸 devlogstat，会连项目目录一起忽略）
+/项目/P1_devlogstat/devlogstat/devlogstat
 
 # 编辑器 / 系统
 .vscode/
