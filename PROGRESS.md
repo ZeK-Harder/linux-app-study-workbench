@@ -4,9 +4,9 @@
 
 ## 现在
 
-- 更新：2026-11-05（**P0 亲跑验收完成 → 环境与工具箱打通，下一站 P1 devlogstat**）
+- 更新：2026-11-05（**P1 devlogstat 开工准备：项目骨架 + 日志样本生成器 + 1000/10 万行样本就绪；P0 盲讲/抽题仍待补**）
 - 阶段：试跑第 1 周（2026.11）· 起步
-- 当前项目：**P0 环境与工具箱（已完成）** → 下一站 **P1 devlogstat**
+- 当前状态：**P0 理解验收待补**（3 分钟盲讲 + 抽 5 题，见第 1 周清单 §5）→ 补完才算正式进 P1。本次只完成 P1「开工准备 / Step 1 样本」，C 代码未开始。
 - 本周三件事（第 1 周）：
   1. ✅ WSL2 环境验收：亲手跑 `wsl -d Ubuntu-22.04` + `gcc/make/gdb/git`（版本见下表）
   2. ✅ `练习/hello-linux`：`make clean && make` → `./hello 100` → `gdb` 断点 + `bt` 四层栈
@@ -55,6 +55,21 @@
 > **盲讲首试（2026-11-05）**：段 1 编译链 ✅（顺序与产物都记得）；段 2 启动链 ⚠️（`execve` 位置说反，漏 `__libc_start_main` 一环）；段 3 输出/返回 ⚠️（缓冲→`write` ✅、返回值链 ✅；`write` 之后怎么显示到屏幕 ❌）。
 > **判定：未达 3 分钟盲讲标准**，第 1 周清单 §5 不勾。明天补 2 个点（execve 的正确位置 / `write` 之后到屏幕）后重讲。
 
+## P1 开工准备记录（2026-11-05，Step 1 样本；P0 验收前不算正式开工）
+
+> 起点：`项目/P1_devlogstat/`（开工简报见该目录 `开工简报.md`）
+
+| 交付 | 内容 | 实测 |
+|---|---|---|
+| 项目骨架 | `devlogstat/{src,tests,tools,samples,docs}` + README + 理解清单模板 | 已建 |
+| 样本生成器 | `tools/gen_sample.py`（固定种子、每 50 行埋 1 坏行、三类轮换、强制 LF） | `--lines 1000` 与 `--lines 100000` 各跑通 |
+| 1000 行样本 | `samples/devlog_1000.log`（入库，演示 + 单测对照） | 1000 行；有效 980 / 坏 20（缺字段 7、未知状态 7、非法数值 6） |
+| 10 万行样本 | `samples/devlog_100k.log`（不入库，现场生成） | 100000 行；有效 98000 / 坏 2000 |
+| 对照答案 | `samples/*.log.stats.txt`（生成器自己记的统计，C 程序结果对照用） | 1000 行：OK 691 / WARN 199 / ERR 90；min 20.1 / max 100.0 / avg 61.36；另含 `--status` 过滤对照（`status_<S>_channel_*`、`status_<S>_value_*`） |
+| 独立复核 | 同种子重生成 `cmp` 逐字节一致；`awk` 独立统计与 stats.txt 一致（含 ERR 过滤明细）；`file` 确认 LF/ASCII；独立审核员 15 个脚本约 120 条命令复核 | 全 PASS（文档小问题已按审核清单修） |
+
+> **待你亲手验收**：先补 P0 的 2 个盲讲点 + 抽 5 题（第 1 周清单 §5），再按开工简报 §8 的 5 条命令跑一遍、答 §8 的 3 个问题；都过了再把 `项目进度.md`「造设备日志样本」勾上、正式记 P1 开工。
+
 ## 本周三件事（2026.11 第 1 周）
 
 1. ✅ hello-linux：`make` + `./hello` + `gdb` 断点（第 1 周主线）
@@ -66,8 +81,19 @@
 - **gdb 12.1 默认 `backtrace past-main = off`**：在 `main` 里 `bt` 只显示 `#0`；要看 libc 帧必须先 `set backtrace past-main on`。
 - **终端一次粘多行命令**（`gcc`、`readelf`、`echo` 混在一起）时，回显全挤在前面，分不清哪段输出属于哪条 → 一行一行敲，或每条前加 `echo "--- 标签 ---"`。
 - `.gitignore` 只写了 `hello` 这个文件名；做对比实验的 `hello_nog` 之类新二进制不会被忽略 → 实验产物放 `/tmp`，或补进 `.gitignore`。
+- **`.gitignore` 的 `*.log` 会吞 P1 样本**（2026-11-05 实测 `git check-ignore`）：`samples/*.log` 默认全被忽略 → 已加例外只放行 `devlog_1000.log`；10 万行样本/大样本不入库，由 `tools/gen_sample.py` 现场生成。
+- **Windows 侧 Python 写文件默认 CRLF**：行尾 `\r` 会留在 `fgets` 缓冲区的末字段（按空格 `strtok` 切分时 `strtod` 尾部检查失败、实测 1000/1000 全判坏；`sscanf("%s")` 则可能侥幸通过）→ `gen_sample.py` 强制 `newline="\n"` + ASCII，用 `file samples/devlog_1000.log` 自查（应显示 `ASCII text`）。
+- **Windows git `core.autocrlf=true`**（本仓库实测）：checkout 时会把 LF 再转回 CRLF，把样本改坏 → 仓库根已加 `.gitattributes`：`* text=auto eol=lf`、`*.log -text`（样本禁止任何换行符转换）；`git add` 后用 `git ls-files --eol` 可验证 index 是 `i/lf`。
 
 ## 换版记录
+
+### 2026-11-05 · P1 devlogstat 开工准备（Step 1 样本）
+
+- 建 `项目/P1_devlogstat/`：开工简报（规格书 §2 + 附录 A.1 落成本地文档）+ `devlogstat/` 骨架 + 理解清单模板。
+- 写 `tools/gen_sample.py`：固定种子、每 50 行埋 1 行坏行（缺字段/未知状态/非法数值轮换）、强制 LF；生成 1000 行与 10 万行样本 + 生成器自记的对照统计（含 `--status` 过滤的每通道计数与数值三项）。
+- 独立复核：同种子重生成 `cmp` 一致、`awk` 独立统计与对照答案一致、`file` 确认 ASCII/LF；`.gitignore` 补样本例外（小样本入库、大样本现场生成）；仓库根新增 `.gitattributes`（`* text=auto eol=lf` + `*.log -text`），防 Windows `core.autocrlf=true` 把样本 checkout 成 CRLF。
+- 另派独立审核（`p1-auditor`，15 个脚本 / 约 120 条命令）复核：数据、格式、可复现、git、文档命令全 PASS；1 个 P1 + 14 个 P2 文档问题已按清单修正。
+- **口径**：C 代码不整包生成；Step 2 起按「先定接口，再写实现」结对写，每段代码要能答「干什么/为什么/删了会怎样」。
 
 ### 2026-11-05 · P0 收尾（亲手验收）
 
