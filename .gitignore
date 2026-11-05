@@ -23,3 +23,7 @@ Thumbs.db
 !/项目/P1_devlogstat/devlogstat/samples/devlog_1000.log
 /项目/P1_devlogstat/devlogstat/samples/devlog_100k.log
 /项目/P1_devlogstat/devlogstat/samples/devlog_100k.log.stats.txt
+
+# Python 字节码
+__pycache__/
+*.pyc
